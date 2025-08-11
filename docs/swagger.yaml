@@ -1,0 +1,114 @@
+definitions:
+  model.ConvertedTransaction:
+    properties:
+      converted_value:
+        type: number
+      date:
+        type: string
+      description:
+        maxLength: 50
+        type: string
+      exchange_rate:
+        type: number
+      id_transaction:
+        type: integer
+      value:
+        type: number
+    required:
+    - date
+    - description
+    - value
+    type: object
+  model.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  model.Transaction:
+    properties:
+      date:
+        type: string
+      description:
+        maxLength: 50
+        type: string
+      id_transaction:
+        type: integer
+      value:
+        type: number
+    required:
+    - date
+    - description
+    - value
+    type: object
+info:
+  contact: {}
+  description: Api para conversão de transação
+  termsOfService: http://swagger.io/terms/
+  title: Transaction api
+  version: "1.0"
+paths:
+  /transaction:
+    post:
+      consumes:
+      - application/json
+      description: Cria uma nova transação de compra no banco de dados com os dados
+        fornecidos
+      parameters:
+      - description: Dados da transação
+        in: body
+        name: transaction
+        required: true
+        schema:
+          $ref: '#/definitions/model.Transaction'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Transaction'
+        "400":
+          description: Dados inválidos
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Erro interno no servidor
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Cria uma nova transação
+      tags:
+      - Transactions
+  /transaction/{id}/convert:
+    get:
+      consumes:
+      - application/json
+      description: Busca uma transação pelo ID e converte seu valor para a moeda especificada
+      parameters:
+      - description: ID da transação
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 'Moeda para conversão (padrão: USD)'
+        in: query
+        name: currency
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.ConvertedTransaction'
+        "400":
+          description: ID inválido
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Erro interno no servidor
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Retorna uma transação convertida para outra moeda
+      tags:
+      - Transactions
+swagger: "2.0"
