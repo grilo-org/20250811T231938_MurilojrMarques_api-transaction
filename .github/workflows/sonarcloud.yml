@@ -1,0 +1,65 @@
+
+name: Grilo SC Analysis for Compiled Languages
+
+on:
+  push:
+    branches: [ "master" ]
+  workflow_dispatch: {}
+
+jobs:
+  scan:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Download Sonar build-wrapper
+        run: |
+          curl -sSLo build-wrapper.zip https://sonarcloud.io/static/cpp/build-wrapper-linux-x86.zip
+          unzip -o build-wrapper.zip
+          mv build-wrapper-linux-x86 build-wrapper
+
+      - name: Attempt intelligent build and test with wrapper
+        id: build_step
+        run: |
+          BUILD_COMMAND="echo 'No specific build command found, running analysis on source files.'"
+          # Lógica de detecção para outras linguagens
+          if [ -f "pom.xml" ]; then
+            BUILD_COMMAND="mvn clean install -DskipTests"
+          elif [ -f "Makefile" ]; then
+            BUILD_COMMAND="make"
+          # MUDANÇA AQUI: Comando específico e mais completo para Go
+          elif [ -f "go.mod" ]; then
+            # Roda os testes e gera um relatório de cobertura que o Sonar pode usar
+            BUILD_COMMAND="go test ./... -coverprofile=coverage.out"
+          elif [ -f "Package.swift" ]; then
+            BUILD_COMMAND="swift build"
+          fi
+          
+          echo "Detected build command: $BUILD_COMMAND"
+          
+          # Executa o comando dentro do wrapper, permitindo que ele falhe (ex: testes quebrados )
+          ./build-wrapper/build-wrapper-linux-x86-64 --out-dir bw-output $BUILD_COMMAND || true
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: >-
+            -Dsonar.projectKey=grilo-org_20250811T231938_MurilojrMarques_api-transaction
+            -Dsonar.projectName=20250811T231938_MurilojrMarques_api-transaction
+            -Dsonar.organization=grilo-org
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.go.coverage.reportPaths=coverage.out
+            -Dsonar.cfamily.build-wrapper-output=bw-output
